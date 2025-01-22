@@ -21,3 +21,7 @@ temp/
 .vscode/
 .idea/
 .DS_Store
+
+# Frontend Deployment URLs
+# Production URL: emailbuilderfrontend-000-git-main-ninjabtk66-gmailcoms-projects.vercel.app
+# Staging URL: emailbuilderfrontend-000-epu32g74t.vercel.app

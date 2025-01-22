@@ -16,7 +16,8 @@ connectDB()
 // Middleware
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN,
+    origin: "https://emailbuilderfrontend.vercel.app",
+    methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   }),
 )
