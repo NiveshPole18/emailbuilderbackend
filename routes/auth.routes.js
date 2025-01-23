@@ -9,4 +9,3 @@ router.post("/login", login)
 router.get("/me", authMiddleware, getMe)
 
 export const authRoutes = router
-
