@@ -10,24 +10,36 @@ dotenv.config()
 
 const app = express()
 
+// CORS configuration
+const corsOptions = {
+  origin: [
+    "https://emailbuilderfrontend-8w2h9esd3-ninjabtk66-gmailcoms-projects.vercel.app",
+    "http://localhost:3000", // For local development
+    "https://emailbuilderfrontend.vercel.app"
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+  optionsSuccessStatus: 200,
+}
+
+// Apply CORS middleware
+app.use(cors(corsOptions))
+
 // Connect to MongoDB
 connectDB()
 
 // Middleware
-app.use(
-  cors({
-    origin: ["https://emailbuilderfrontend.vercel.app",'https://emailbuilderfrontend-kx7filkqm-ninjabtk66-gmailcoms-projects.vercel.app' ],// Add any other frontend URLs you are using],
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    credentials: true,
-  }),
-)
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use("/uploads", express.static("uploads"))
 
+// Pre-flight OPTIONS handler
+app.options("*", cors(corsOptions))
+
 // Routes
 app.use("/api/auth", authRoutes)
-app.use("/api", emailRoutes)
+app.use("/api/email", emailRoutes)
 
 // Error Handler
 app.use(errorHandler)
