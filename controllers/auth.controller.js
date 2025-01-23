@@ -3,6 +3,11 @@ import jwt from "jsonwebtoken"
 import { User } from "../models/user.model.js"
 
 export const register = async (req, res) => {
+  // Handle preflight
+  if (req.method === "OPTIONS") {
+    return res.status(204).end()
+  }
+
   console.log("Registration attempt:", { ...req.body, password: "[REDACTED]" })
 
   try {
@@ -69,6 +74,11 @@ export const register = async (req, res) => {
 }
 
 export const login = async (req, res) => {
+  // Handle preflight
+  if (req.method === "OPTIONS") {
+    return res.status(204).end()
+  }
+
   console.log("Login attempt:", { email: req.body.email })
 
   try {
