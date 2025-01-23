@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken"
 
 export const authMiddleware = (req, res, next) => {
-  // Always allow OPTIONS requests
+  // Handle preflight requests
   if (req.method === "OPTIONS") {
     return next()
   }
@@ -13,32 +13,41 @@ export const authMiddleware = (req, res, next) => {
   }
 
   try {
-    const token = req.header("Authorization")?.replace("Bearer ", "")
+    // Get token from header
+    const token = req.headers.authorization?.split(" ")[1]
 
+    // Check if no token
     if (!token) {
-      console.log("No token provided for path:", req.path)
       return res.status(401).json({
-        message: "Authentication required",
-        path: req.path,
+        message: "No authentication token, authorization denied",
+        code: "NO_TOKEN",
       })
     }
 
     try {
+      // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET)
+
+      // Add user from payload
       req.user = decoded
+
       next()
-    } catch (error) {
-      console.error("Token verification failed:", error)
+    } catch (err) {
+      console.error("Token verification failed:", err)
+
       return res.status(401).json({
-        message: "Invalid or expired token",
-        error: process.env.NODE_ENV === "development" ? error.message : undefined,
+        message: "Token is not valid",
+        code: "INVALID_TOKEN",
+        error: process.env.NODE_ENV === "development" ? err.message : undefined,
       })
     }
-  } catch (error) {
-    console.error("Auth middleware error:", error)
+  } catch (err) {
+    console.error("Auth middleware error:", err)
+
     return res.status(500).json({
-      message: "Server error",
-      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+      message: "Server Error",
+      code: "SERVER_ERROR",
+      error: process.env.NODE_ENV === "development" ? err.message : undefined,
     })
   }
 }
