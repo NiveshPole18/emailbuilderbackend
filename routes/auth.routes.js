@@ -1,24 +1,19 @@
 import express from "express"
 import { register, login, getMe } from "../controllers/auth.controller.js"
 import { authMiddleware } from "../middleware/auth.middleware.js"
-import { validateRegistration, validateLogin } from "../middleware/validation.middleware.js"
+import { corsMiddleware } from "../middleware/cors.middleware.js"
 
 const router = express.Router()
 
+// Apply CORS middleware specifically for auth routes
+router.use(corsMiddleware)
+
 // Public routes
-router.post("/register", validateRegistration, register)
-router.post("/login", validateLogin, login)
+router.post("/register", register)
+router.post("/login", login)
 
 // Protected routes
 router.get("/me", authMiddleware, getMe)
-
-// Debug route
-router.get("/register", (req, res) => {
-  res.status(405).json({
-    message: "Method not allowed. Please use POST for registration.",
-    allowedMethods: ["POST"],
-  })
-})
 
 export { router as authRoutes }
 
