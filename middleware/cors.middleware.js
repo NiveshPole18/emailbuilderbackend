@@ -2,9 +2,9 @@ export const corsMiddleware = (req, res, next) => {
   // Get the origin from the request headers
   const origin = req.headers.origin
 
-  // List of allowed origins
+  // List of allowed origins - make sure to include the new frontend URL
   const allowedOrigins = [
-    "https://emailbuilderfrontend-gsu2pgvj5-ninjabtk66-gmailcoms-projects.vercel.app",
+    "https://emailbuilderfrontend-fuhvvprhw-ninjabtk66-gmailcoms-projects.vercel.app",
     "http://localhost:3000",
   ]
 
