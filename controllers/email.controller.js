@@ -1,40 +1,40 @@
-import fs from "fs/promises"
-import path from "path"
-import sharp from "sharp"
 import { Template } from "../models/template.model.js"
-import { compileTemplate } from "../utils/email.js"
+import sharp from "sharp"
+import path from "path"
+import fs from "fs/promises"
 
-export const getEmailLayout = async (req, res) => {
+export const getTemplates = async (req, res) => {
   try {
-    const layoutPath = path.join(process.cwd(), "templates", "layout.html")
-    const layout = await fs.readFile(layoutPath, "utf8")
-    res.json({ layout })
+    const templates = await Template.find({ userId: req.user.userId }).sort({ createdAt: -1 }).select("-__v")
+
+    res.json(templates)
   } catch (error) {
-    console.error("Error reading layout:", error)
-    res.status(500).json({ message: "Error reading layout", error: error.message })
+    console.error("Error fetching templates:", error)
+    res.status(500).json({
+      message: "Error fetching templates",
+      error: error.message,
+    })
   }
 }
 
-export const uploadImage = async (req, res) => {
+export const getTemplate = async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ message: "No image file provided" })
+    const template = await Template.findOne({
+      _id: req.params.id,
+      userId: req.user.userId,
+    })
+
+    if (!template) {
+      return res.status(404).json({ message: "Template not found" })
     }
 
-    const optimizedImage = await sharp(req.file.path).resize(800).jpeg({ quality: 80 }).toBuffer()
-
-    const optimizedPath = `uploads/${req.file.filename}.jpg`
-    await sharp(optimizedImage).toFile(optimizedPath)
-
-    // Delete original file
-    await fs.unlink(req.file.path)
-
-    res.json({
-      imageUrl: `/${optimizedPath}`,
-    })
+    res.json(template)
   } catch (error) {
-    console.error("Error uploading image:", error)
-    res.status(500).json({ message: "Error uploading image", error: error.message })
+    console.error("Error fetching template:", error)
+    res.status(500).json({
+      message: "Error fetching template",
+      error: error.message,
+    })
   }
 }
 
@@ -55,70 +55,46 @@ export const uploadEmailConfig = async (req, res) => {
       })
     }
 
-    // Create and save template with default layout
     const template = new Template({
       name: name.trim(),
       config,
       userId: req.user.userId,
-      layout: "default", // Set default layout
     })
 
     const savedTemplate = await template.save()
-    console.log("Template saved successfully:", savedTemplate._id)
-
     res.status(201).json(savedTemplate)
   } catch (error) {
-    console.error("Error saving template:", error)
+    console.error("Error creating template:", error)
     res.status(500).json({
-      message: "Error saving template",
+      message: "Error creating template",
       error: error.message,
     })
   }
 }
 
-export const getTemplates = async (req, res) => {
+export const updateTemplate = async (req, res) => {
   try {
-    const templates = await Template.find({ userId: req.user.userId }).sort({ createdAt: -1 }).select("-__v") // Exclude version key
-
-    res.json(templates)
-  } catch (error) {
-    console.error("Error fetching templates:", error)
-    res.status(500).json({ message: "Error fetching templates", error: error.message })
-  }
-}
-
-export const renderAndDownloadTemplate = async (req, res) => {
-  try {
-    const template = await Template.findOne({
-      _id: req.params.id,
-      userId: req.user.userId,
+    const template = await Template.findOneAndUpdate({ _id: req.params.id, userId: req.user.userId }, req.body, {
+      new: true,
     })
 
     if (!template) {
       return res.status(404).json({ message: "Template not found" })
     }
 
-    // Use the template's layout or fall back to default
-    const layoutName = template.layout || "default"
-    const renderedHtml = await compileTemplate(layoutName, {
-      ...template.config,
-      title: template.config.title,
-      imageUrl: template.config.imageUrl,
-      styles: template.config.styles || {},
-    })
-
-    res.setHeader("Content-Type", "text/html")
-    res.setHeader("Content-Disposition", `attachment; filename="template-${template._id}.html"`)
-    res.send(renderedHtml)
+    res.json(template)
   } catch (error) {
-    console.error("Error rendering template:", error)
-    res.status(500).json({ message: "Error rendering template", error: error.message })
+    console.error("Error updating template:", error)
+    res.status(500).json({
+      message: "Error updating template",
+      error: error.message,
+    })
   }
 }
 
 export const deleteTemplate = async (req, res) => {
   try {
-    const template = await Template.findOne({
+    const template = await Template.findOneAndDelete({
       _id: req.params.id,
       userId: req.user.userId,
     })
@@ -127,11 +103,41 @@ export const deleteTemplate = async (req, res) => {
       return res.status(404).json({ message: "Template not found" })
     }
 
-    await Template.deleteOne({ _id: template._id })
     res.json({ message: "Template deleted successfully" })
   } catch (error) {
     console.error("Error deleting template:", error)
-    res.status(500).json({ message: "Error deleting template", error: error.message })
+    res.status(500).json({
+      message: "Error deleting template",
+      error: error.message,
+    })
+  }
+}
+
+export const uploadImage = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No image file provided" })
+    }
+
+    const filename = `${Date.now()}-${path.basename(req.file.originalname)}`
+    const outputPath = path.join("uploads", filename)
+
+    // Optimize and save image
+    await sharp(req.file.buffer)
+      .resize(800) // max width
+      .jpeg({ quality: 80 })
+      .toFile(outputPath)
+
+    // Return the image URL
+    res.json({
+      url: `/uploads/${filename}`,
+    })
+  } catch (error) {
+    console.error("Error uploading image:", error)
+    res.status(500).json({
+      message: "Error uploading image",
+      error: error.message,
+    })
   }
 }
 
