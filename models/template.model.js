@@ -12,15 +12,13 @@ const templateSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    content: {
+      type: String,
+      required: true,
+    },
     config: {
-      title: {
-        type: String,
-        required: true,
-      },
-      content: {
-        type: String,
-        required: true,
-      },
+      title: String,
+      content: String,
       imageUrl: String,
       footer: String,
       styles: {
@@ -41,11 +39,6 @@ const templateSchema = new mongoose.Schema(
           default: "16px",
         },
       },
-    },
-    // Make layout optional since we're using a default layout
-    layout: {
-      type: String,
-      default: "default",
     },
   },
   {
