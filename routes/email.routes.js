@@ -8,19 +8,24 @@ import {
   updateTemplate,
   deleteTemplate,
   uploadImage,
+  renderTemplate,
 } from "../controllers/email.controller.js"
 
 const router = express.Router()
 
-// Template routes
-router.get("/templates", authMiddleware, getTemplates)
-router.get("/template/:id", authMiddleware, getTemplate)
-router.post("/template", authMiddleware, uploadEmailConfig)
-router.put("/template/:id", authMiddleware, updateTemplate)
-router.delete("/template/:id", authMiddleware, deleteTemplate)
+// Apply auth middleware to all routes
+router.use(authMiddleware)
 
-// Upload route
-router.post("/upload", authMiddleware, uploadMiddleware, uploadImage)
+// Template routes
+router.get("/templates", getTemplates)
+router.get("/template/:id", getTemplate)
+router.get("/template/:id/render", renderTemplate) // Add this route
+router.post("/template", uploadEmailConfig)
+router.put("/template/:id", updateTemplate)
+router.delete("/template/:id", deleteTemplate)
+
+// Image upload route
+router.post("/upload-image", uploadMiddleware, uploadImage)
 
 export { router as emailRoutes }
 
