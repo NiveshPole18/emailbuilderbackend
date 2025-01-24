@@ -3,72 +3,64 @@ import jwt from "jsonwebtoken"
 import { User } from "../models/user.model.js"
 
 export const register = async (req, res) => {
-  // Handle preflight
-  if (req.method === "OPTIONS") {
-    return res.status(204).end()
-  }
-
-  console.log("Registration attempt:", { ...req.body, password: "[REDACTED]" })
-
   try {
-    const { email, password, name } = req.body
+    console.log("Registration attempt with data:", { ...req.body, password: "[REDACTED]" })
 
-    // Validate required fields
-    if (!email || !password || !name) {
+    const { name, email, password } = req.body
+
+    // Input validation
+    if (!name || !email || !password) {
       return res.status(400).json({
-        message: "Missing required fields",
-        details: {
-          email: !email ? "Email is required" : null,
-          password: !password ? "Password is required" : null,
-          name: !name ? "Name is required" : null,
-        },
+        success: false,
+        message: "All fields are required",
       })
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({
-        message: "Invalid email format",
-      })
-    }
-
-    // Check if user exists
+    // Check if user already exists
     const existingUser = await User.findOne({ email })
     if (existingUser) {
       return res.status(400).json({
+        success: false,
         message: "User already exists with this email",
       })
     }
 
+    // Hash password
+    const salt = await bcrypt.genSalt(10)
+    const hashedPassword = await bcrypt.hash(password, salt)
+
     // Create new user
-    const hashedPassword = await bcrypt.hash(password, 10)
     const user = new User({
       name,
       email,
       password: hashedPassword,
     })
 
-    await user.save()
+    // Save user to database
+    const savedUser = await user.save()
+    console.log("User saved successfully:", savedUser._id)
 
-    // Create token
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: "24h" })
+    // Generate JWT token
+    const token = jwt.sign({ userId: savedUser._id }, process.env.JWT_SECRET || "fallback-secret-key", {
+      expiresIn: "24h",
+    })
 
-    console.log("Registration successful for:", email)
-
-    res.status(201).json({
+    // Send success response
+    return res.status(201).json({
+      success: true,
       token,
       user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
+        id: savedUser._id,
+        name: savedUser.name,
+        email: savedUser.email,
       },
     })
   } catch (error) {
     console.error("Registration error:", error)
-    res.status(500).json({
-      message: "Error creating user",
-      error: error.message,
+    return res.status(500).json({
+      success: false,
+      message: "Server error during registration",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     })
   }
 }
