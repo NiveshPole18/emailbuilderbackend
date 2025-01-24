@@ -43,22 +43,43 @@ export const uploadEmailConfig = async (req, res) => {
     const { name, config } = req.body
 
     // Validate required fields
-    const errors = {}
-    if (!name?.trim()) errors.name = "Template name is required"
-    if (!config?.title?.trim()) errors.title = "Template title is required"
-    if (!config?.content?.trim()) errors.content = "Template content is required"
-
-    if (Object.keys(errors).length > 0) {
+    if (!name?.trim()) {
       return res.status(400).json({
         message: "Validation failed",
-        details: errors,
+        details: { name: "Template name is required" },
       })
     }
 
+    if (!config?.title?.trim()) {
+      return res.status(400).json({
+        message: "Validation failed",
+        details: { title: "Template title is required" },
+      })
+    }
+
+    if (!config?.content?.trim()) {
+      return res.status(400).json({
+        message: "Validation failed",
+        details: { content: "Template content is required" },
+      })
+    }
+
+    // Create new template with default values for optional fields
     const template = new Template({
-      name: name.trim(),
-      config,
       userId: req.user.userId,
+      name: name.trim(),
+      config: {
+        title: config.title.trim(),
+        content: config.content.trim(),
+        imageUrl: config.imageUrl || "",
+        footer: config.footer || "",
+        styles: {
+          titleColor: config.styles?.titleColor || "#000000",
+          contentColor: config.styles?.contentColor || "#333333",
+          backgroundColor: config.styles?.backgroundColor || "#ffffff",
+          fontSize: config.styles?.fontSize || "16px",
+        },
+      },
     })
 
     const savedTemplate = await template.save()
@@ -74,9 +95,49 @@ export const uploadEmailConfig = async (req, res) => {
 
 export const updateTemplate = async (req, res) => {
   try {
-    const template = await Template.findOneAndUpdate({ _id: req.params.id, userId: req.user.userId }, req.body, {
-      new: true,
-    })
+    const { name, config } = req.body
+
+    // Validate required fields
+    if (!name?.trim()) {
+      return res.status(400).json({
+        message: "Validation failed",
+        details: { name: "Template name is required" },
+      })
+    }
+
+    if (!config?.title?.trim()) {
+      return res.status(400).json({
+        message: "Validation failed",
+        details: { title: "Template title is required" },
+      })
+    }
+
+    if (!config?.content?.trim()) {
+      return res.status(400).json({
+        message: "Validation failed",
+        details: { content: "Template content is required" },
+      })
+    }
+
+    const template = await Template.findOneAndUpdate(
+      { _id: req.params.id, userId: req.user.userId },
+      {
+        name: name.trim(),
+        config: {
+          title: config.title.trim(),
+          content: config.content.trim(),
+          imageUrl: config.imageUrl || "",
+          footer: config.footer || "",
+          styles: {
+            titleColor: config.styles?.titleColor || "#000000",
+            contentColor: config.styles?.contentColor || "#333333",
+            backgroundColor: config.styles?.backgroundColor || "#ffffff",
+            fontSize: config.styles?.fontSize || "16px",
+          },
+        },
+      },
+      { new: true, runValidators: true },
+    )
 
     if (!template) {
       return res.status(404).json({ message: "Template not found" })
@@ -119,18 +180,30 @@ export const uploadImage = async (req, res) => {
       return res.status(400).json({ message: "No image file provided" })
     }
 
-    const filename = `${Date.now()}-${path.basename(req.file.originalname)}`
-    const outputPath = path.join("uploads", filename)
+    // Get the file path
+    const filePath = req.file.path
+    const fileName = req.file.filename
 
-    // Optimize and save image
-    await sharp(req.file.buffer)
-      .resize(800) // max width
-      .jpeg({ quality: 80 })
-      .toFile(outputPath)
+    // Optimize the image
+    await sharp(filePath)
+      .resize(800, null, {
+        withoutEnlargement: true,
+      })
+      .jpeg({
+        quality: 80,
+        progressive: true,
+      })
+      .toFile(path.join("uploads", `optimized-${fileName}`))
 
-    // Return the image URL
+    // Delete the original file
+    await fs.unlink(filePath)
+
+    // Return the optimized image URL
+    const imageUrl = `/uploads/optimized-${fileName}`
+
     res.json({
-      url: `/uploads/${filename}`,
+      url: imageUrl,
+      message: "Image uploaded successfully",
     })
   } catch (error) {
     console.error("Error uploading image:", error)
