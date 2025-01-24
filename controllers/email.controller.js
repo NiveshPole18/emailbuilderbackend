@@ -2,6 +2,11 @@ import { Template } from "../models/template.model.js"
 import sharp from "sharp"
 import path from "path"
 import fs from "fs/promises"
+import { fileURLToPath } from "url"
+import { dirname } from "path"
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
 export const getTemplates = async (req, res) => {
   try {
@@ -180,26 +185,31 @@ export const uploadImage = async (req, res) => {
       return res.status(400).json({ message: "No image file provided" })
     }
 
-    // Get the file path
-    const filePath = req.file.path
-    const fileName = req.file.filename
+    const originalPath = req.file.path
+    const filename = req.file.filename
+    const outputFilename = `optimized-${filename}`
+    const outputPath = path.join(__dirname, "../uploads", outputFilename)
 
-    // Optimize the image
-    await sharp(filePath)
+    // Ensure uploads directory exists
+    await fs.mkdir(path.join(__dirname, "../uploads")).catch(() => {})
+
+    // Optimize image
+    await sharp(originalPath)
       .resize(800, null, {
         withoutEnlargement: true,
+        fit: "inside",
       })
       .jpeg({
         quality: 80,
         progressive: true,
       })
-      .toFile(path.join("uploads", `optimized-${fileName}`))
+      .toFile(outputPath)
 
-    // Delete the original file
-    await fs.unlink(filePath)
+    // Delete original file
+    await fs.unlink(originalPath).catch(console.error)
 
-    // Return the optimized image URL
-    const imageUrl = `/uploads/optimized-${fileName}`
+    // Return the URL for the optimized image
+    const imageUrl = `/uploads/${outputFilename}`
 
     res.json({
       url: imageUrl,
@@ -209,6 +219,108 @@ export const uploadImage = async (req, res) => {
     console.error("Error uploading image:", error)
     res.status(500).json({
       message: "Error uploading image",
+      error: error.message,
+    })
+  }
+}
+
+export const renderTemplate = async (req, res) => {
+  try {
+    const template = await Template.findOne({
+      _id: req.params.id,
+      userId: req.user.userId,
+    })
+
+    if (!template) {
+      return res.status(404).json({ message: "Template not found" })
+    }
+
+    // Generate HTML using the template
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${template.config.title}</title>
+        <style>
+          body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            background-color: ${template.config.styles.backgroundColor};
+            color: ${template.config.styles.contentColor};
+          }
+          .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+          }
+          .header {
+            text-align: center;
+            padding: 20px 0;
+          }
+          .header h1 {
+            color: ${template.config.styles.titleColor};
+            font-size: ${template.config.styles.fontSize};
+            margin: 0;
+          }
+          .content {
+            padding: 20px 0;
+          }
+          .image {
+            max-width: 100%;
+            height: auto;
+            margin: 20px 0;
+            display: block;
+          }
+          .footer {
+            text-align: center;
+            padding: 20px 0;
+            font-size: 12px;
+            color: #666;
+            border-top: 1px solid #eee;
+            margin-top: 20px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>${template.config.title}</h1>
+          </div>
+          
+          ${
+            template.config.imageUrl
+              ? `
+            <img src="${template.config.imageUrl}" alt="Email content" class="image">
+          `
+              : ""
+          }
+          
+          <div class="content">
+            ${template.config.content}
+          </div>
+          
+          <div class="footer">
+            ${template.config.footer}
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+
+    // Set headers for file download
+    res.setHeader("Content-Type", "text/html")
+    res.setHeader("Content-Disposition", `attachment; filename="template-${template._id}.html"`)
+
+    // Send the rendered HTML
+    res.send(html)
+  } catch (error) {
+    console.error("Error rendering template:", error)
+    res.status(500).json({
+      message: "Error rendering template",
       error: error.message,
     })
   }
