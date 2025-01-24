@@ -34,7 +34,7 @@ app.use("/uploads", express.static("uploads"))
 
 // Mount routes
 app.use("/api/auth", authRoutes)
-app.use("/api/", emailRoutes)
+app.use("/api", emailRoutes)
 
 // Error handler
 app.use(errorHandler)
