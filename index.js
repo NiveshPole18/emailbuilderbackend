@@ -5,6 +5,7 @@ import { connectDB } from "./config/database.js"
 import { errorHandler } from "./middleware/error.middleware.js"
 import { emailRoutes } from "./routes/email.routes.js"
 import { authRoutes } from "./routes/auth.routes.js"
+import { mkdir } from "fs/promises"
 
 // Load env vars
 dotenv.config()
@@ -47,7 +48,12 @@ process.on("unhandledRejection", (err, promise) => {
 
 const PORT = process.env.PORT || 5000
 
-const server = app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`)
-})
+async function startServer() {
+  await mkdir("uploads").catch(() => {})
+  const server = app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`)
+  })
+}
+
+startServer()
 
