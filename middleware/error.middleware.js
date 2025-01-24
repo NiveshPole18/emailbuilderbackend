@@ -1,30 +1,37 @@
 export const errorHandler = (err, req, res, next) => {
-    console.error(err.stack)
-  
-    if (err.name === "ValidationError") {
-      return res.status(400).json({
-        message: "Validation Error",
-        errors: Object.values(err.errors).map((error) => error.message),
-      })
-    }
-  
-    if (err.name === "CastError") {
-      return res.status(400).json({
-        message: "Invalid ID format",
-      })
-    }
-  
-    if (err.name === "MulterError") {
-      return res.status(400).json({
-        message: "File upload error",
-        error: err.message,
-      })
-    }
-  
-    res.status(500).json({
-      message: "Internal Server Error",
-      error: process.env.NODE_ENV === "development" ? err.message : undefined,
+  console.error("Error stack:", err.stack)
+
+  // Mongoose validation error
+  if (err.name === "ValidationError") {
+    const messages = Object.values(err.errors).map((error) => error.message)
+    return res.status(400).json({
+      success: false,
+      message: "Validation Error",
+      errors: messages,
     })
   }
-  
-  
+
+  // Mongoose duplicate key error
+  if (err.code === 11000) {
+    return res.status(400).json({
+      success: false,
+      message: "Duplicate field value entered",
+    })
+  }
+
+  // JWT error
+  if (err.name === "JsonWebTokenError") {
+    return res.status(401).json({
+      success: false,
+      message: "Invalid token",
+    })
+  }
+
+  // Default server error
+  return res.status(500).json({
+    success: false,
+    message: "Server Error",
+    error: process.env.NODE_ENV === "development" ? err.message : undefined,
+  })
+}
+
