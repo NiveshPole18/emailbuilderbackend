@@ -12,15 +12,25 @@ const templateSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-    content: {
-      type: String,
-      required: true,
-    },
     config: {
-      title: String,
-      content: String,
-      imageUrl: String,
-      footer: String,
+      title: {
+        type: String,
+        required: true,
+        trim: true,
+      },
+      content: {
+        type: String,
+        required: true,
+        trim: true,
+      },
+      imageUrl: {
+        type: String,
+        default: "",
+      },
+      footer: {
+        type: String,
+        default: "",
+      },
       styles: {
         titleColor: {
           type: String,
